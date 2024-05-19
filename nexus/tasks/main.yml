@@ -1,0 +1,94 @@
+---
+- name: Upgrade all packages
+  apt:
+    upgrade: yes
+
+- name: Install Java OpenJDK 8
+  ansible.builtin.apt:
+    name: openjdk-8-jdk
+    state: present
+
+- name: Create Nexus user
+  ansible.builtin.user:
+    name: nexus
+    state: present
+    shell: /bin/bash
+    create_home: yes
+
+- name: Add Nexus user to Nexus group
+  ansible.builtin.user:
+    name: nexus
+    groups: nexus
+    append: yes
+
+- name: Grant necessary privileges to Nexus user
+  ansible.builtin.file:
+    path: /path/to/nexus/data
+    owner: nexus
+    group: nexus
+    state: directory
+
+- name: Create Nexus directory
+  ansible.builtin.file:
+    path: /opt/nexus
+    state: directory
+    owner: nexus
+    group: nexus
+    recurse: true
+
+- name: Download Nexus package
+  ansible.builtin.get_url:
+    url: "https://sonatype-download.global.ssl.fastly.net/repository/downloads-prod-group/3/nexus-3.29.2-02-unix.tar.gz"
+    dest: "/opt/nexus/nexus-latest.tar.gz"
+    mode: "0644"
+
+- name: Extract Nexus package
+  ansible.builtin.unarchive:
+    src: "/opt/nexus/nexus-latest.tar.gz"
+    dest: "/opt/"
+    remote_src: yes
+
+    
+- name : ownership 
+  file:
+    path: /opt/sonatype-work
+    owner: nexus
+    group: nexus
+    recurse: true
+
+    
+- name: Edit nexus.vmoptions file
+  ansible.builtin.lineinfile:
+    path: /opt/nexus-3.29.2-02/bin/nexus.vmoptions
+    regexp: "^-Xms"
+    line: |
+      -Xms1024m
+      -Xmx1024m
+      -XX:MaxDirectMemorySize=1024m
+      -XX:LogFile=./sonatype-work/nexus3/log/jvm.log
+      -XX:-OmitStackTraceInFastThrow
+    # backrefs: yes
+
+- name: Uncomment and set run_as_user parameter in nexus.rc
+  ansible.builtin.replace:
+    path: /opt/nexus-3.29.2-02/bin/nexus.rc
+    regexp: '^#?run_as_user=.*$'
+    replace: 'run_as_user="nexus"'
+      
+- name: copy file
+  copy:
+    src: nexus.service
+    dest: /etc/systemd/system/nexus.service
+    mode: 0644
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Start Nexus service
+  ansible.builtin.systemd:
+    name: nexus
+    state: started
+    enabled: yes
+
+

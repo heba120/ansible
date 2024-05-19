@@ -1,0 +1,45 @@
+---
+- name: install nginx
+  yum:
+    name: nginx
+    state: present
+
+- name: start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+
+- name: Create SSL Private Key Directory
+  file:
+    path: /etc/ssl/private
+    state: directory
+    mode: 0700
+    
+- name: Create private key (RSA, 4096 bits)
+  community.crypto.openssl_privatekey:
+    path: /etc/ssl/private/certificate.key
+    type: RSA
+    size: 4096
+
+- name: Generate self-signed SSL certificate
+  openssl_certificate:
+    path: /etc/ssl/certificate.pem
+    privatekey_path: /etc/ssl/private/certificate.key
+    provider: selfsigned
+    state: present
+
+- name: Copy Nginx configuration template
+  copy:
+    src: nginx-jenkins.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: 0644
+
+- name: Reload Nginx
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+

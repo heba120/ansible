@@ -1,0 +1,13 @@
+- hosts: Jenkins
+  name: role playbook
+  remote_user: ec2-user
+  become: yes
+  roles: 
+  - playbook
+  - nginx
+# - hosts: nexus
+#   name: role playbook
+#   remote_user: ubuntu
+#   become: yes
+#   roles: 
+#   - nexus
